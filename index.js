@@ -1,5 +1,5 @@
 import express from 'express'
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import 'dotenv/config'
 import cors from "cors"
 const app = express()
@@ -33,6 +33,35 @@ app.post('/create-event', async(req, res) => {
 
   console.log(result)
 
+  res.send(result)
+})
+
+app.get('/upcoming-events', async(req, res)=>{
+  const query = {}
+  const options = {}
+
+  // ?limit=N → the next N upcoming events (future dates only, soonest
+  // first) using MongoDB's .limit(). Used by the home page's
+  // "Recent Upcoming Drives" section. Without the param, behaviour is
+  // unchanged: every event, in creation order.
+  const limit = parseInt(req.query.limit, 10)
+  if (Number.isInteger(limit) && limit > 0) {
+    const now = new Date()
+    const pad = (n) => String(n).padStart(2, '0')
+    const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+    // eventDate is a "YYYY-MM-DD" string, so lexicographic compare works.
+    query.eventDate = { $gte: today }
+    options.sort = { eventDate: 1, _id: -1 }
+    options.limit = limit
+  }
+
+  const result = await eventCollection.find(query, options).toArray()
+  res.send(result)
+})
+
+app.get('/upcoming-events/:id', async(req, res)=>{
+  const {id} = req.params
+  const result = await eventCollection.findOne({_id: new ObjectId(id)})
   res.send(result)
 })
 
